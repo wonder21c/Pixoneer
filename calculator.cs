@@ -1,3 +1,4 @@
+
 <Window x:Class="Calculator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -49,11 +50,11 @@
             <Button Grid.Row="3" Grid.Column="1" Margin="5" Content="2" Click="button_Click"/>
             <Button Grid.Row="3" Grid.Column="2" Margin="5" Content="3" Click="button_Click"/>
             <Button Grid.Row="3" Grid.Column="3" Margin="5" Content="Backspace" />
-
+ 
             <Button Grid.Row="4" Grid.Column="0" Margin="5" Content="+/-"/>
             <Button Grid.Row="4" Grid.Column="1" Margin="5" Content="0"/>
             <Button Grid.Row="4" Grid.Column="2" Margin="5" Content="."/>
             <Button Grid.Row="4" Grid.Column="3" Margin="5" Content="="/>
+</Grid>
         </Grid>
-    </Grid>
 </Window>
