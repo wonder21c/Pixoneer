@@ -20,7 +20,7 @@ namespace Calculator
             Button btn = sender as Button;
             string content = btn.Content.ToString();
 
-            // 숫자 입력 처리
+       
             if (char.IsDigit(content, 0))
             {
                 input += content;
