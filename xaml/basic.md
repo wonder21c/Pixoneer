@@ -14,3 +14,5 @@
 | `*` (별표) | 남은 공간을 비율로 나눔 (가변적 크기) | `<ColumnDefinition Width="*"/>`  |
 | 숫자\*     | 여러 비율로 나눌 수 있음         | `<ColumnDefinition Width="2*"/>` |
 | 고정값 (px) | 절대 크기로 지정              | `<RowDefinition Height="100"/>`  |
+
+
