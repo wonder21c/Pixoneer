@@ -1,4 +1,4 @@
-```
+
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,10 +7,9 @@ namespace Calculator
 {
     public partial class MainWindow : Window
     {
-        string input = "";            // 현재 입력 중인 숫자
-        double firstNumber = 0;       // 첫 번째 숫자 저장
-        bool isPlusPressed = false;   // + 버튼 눌렸는지 여부
-
+        string input = "";           
+        double firstNumber = 0;      
+        bool isPlusPressed = false;   
         public MainWindow()
         {
             InitializeComponent();
@@ -27,7 +26,7 @@ namespace Calculator
                 input += content;
                 textbox.Text = input;
             }
-            // + 버튼 클릭
+           
             else if (content == "+")
             {
                 if (double.TryParse(input, out firstNumber))
@@ -36,7 +35,7 @@ namespace Calculator
                     isPlusPressed = true;
                 }
             }
-            // = 버튼 클릭
+            
             else if (content == "=")
             {
                 if (isPlusPressed && double.TryParse(input, out double secondNumber))
@@ -47,7 +46,7 @@ namespace Calculator
                     isPlusPressed = false;
                 }
             }
-            // C 버튼 클릭
+            
             else if (content == "C")
             {
                 input = "";
@@ -58,4 +57,4 @@ namespace Calculator
         }
     }
 }
-```
+
