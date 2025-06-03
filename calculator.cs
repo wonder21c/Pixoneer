@@ -16,14 +16,52 @@ namespace Calculator
     /// </summary>
     public partial class MainWindow : Window
     {
+        string input = "";
+        int num1 = 0;
+        bool plusButton = false;
         public MainWindow()
         {
             InitializeComponent();
         }
     private void button_Click(object sender, RoutedEventArgs e)
         {
-            Button btn = (Button)sender;
-            this.textbox.Text = (string)btn.Content;
+            Button btn = sender as Button;
+            string content = btn.Content.ToString();
+
+            
+            if (char.IsDigit(content, 0))
+            {
+                input += content;
+                textbox.Text = input;
+            }
+
+            else if (content == "+")
+            {
+                if (int.TryParse(input, out num1))
+                {
+                    input = "";
+                    plusButton = true;
+                }
+            }
+
+            else if (content == "=")
+            {
+                if (plusButton && int.TryParse(input, out int num2))
+                {
+                    int result = num1 + num2;
+                    textbox.Text = result.ToString();
+                    input = result.ToString();
+                    plusButton = false;
+                }
+            }
+
+            else if (content == "C")
+            {
+                input = "";
+                num1 = 0;
+                plusButton = false;
+                textbox.Text = "0";
+            }
             ;
         }
 
