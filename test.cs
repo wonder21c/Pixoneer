@@ -35,9 +35,9 @@ namespace Calculator
             {
                 ApplyPreviousOperation();
                 textbox.Text = result.ToString();
-                input = result.ToString(); // 결과를 다음 입력으로 사용
+                input = result.ToString(); 
                 currentOperator = "";
-                isFirstInput = true; // 다음 계산을 위해 초기화
+                isFirstInput = true; 
             }
             else if (content == "C")
             {
