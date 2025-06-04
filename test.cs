@@ -16,41 +16,38 @@ namespace Calculator
     /// </summary>
     public partial class MainWindow : Window
     {
-        string input = "";      
+        string input = "";
         double num = 0;
         double result = 0;
         bool plusButton = false;
         bool minusButton = false;
-        bool mulButton = false;  
+        bool mulButton = false;
         bool divButton = false;
 
         public MainWindow()
         {
             InitializeComponent();
         }
-    private void button_Click(object sender, RoutedEventArgs e)
+        private void button_Click(object sender, RoutedEventArgs e)
         {
             Button btn = sender as Button;
-            string content = btn.Content.ToString();        
+            string content = btn.Content.ToString();
 
             if (char.IsDigit(content, 0) || content == ".")
             {
                 input += content;
                 textbox.Text = input;
-                if(double.TryParse(input, out num))
-                {
-                    result = num;
-                    input = "";
-                }
+      
             }
-
+            
             else if (content == "+")
             {
+
                 if (double.TryParse(input, out num))
                 {
                     result += num;
                     input = "";
-                    if(minusButton || mulButton || divButton)
+                    if (minusButton || mulButton || divButton)
                     {
                         minusButton = false;
                         mulButton = false;
@@ -76,9 +73,9 @@ namespace Calculator
                         }
                         minusButton = true;
                     }
-                    else 
+                    else
                         result -= num;
-                        input = "";
+                    input = "";
                     if (plusButton || mulButton || divButton)
                     {
                         plusButton = false;
@@ -116,7 +113,7 @@ namespace Calculator
                 {
                     if (result == 0)
                     {
-                        result = num/1;
+                        result = num / 1;
                         input = "";
                         if (plusButton || mulButton || minusButton)
                         {
@@ -144,10 +141,10 @@ namespace Calculator
 
             else if (content == "=")
             {
-                if (plusButton)
+                if (plusButton && double.TryParse(input, out num))
                 {
-                   
-                    double finalResult = result ;
+
+                    double finalResult = result + num;
                     textbox.Text = finalResult.ToString();
                     //input = finalResult.ToString();
                     plusButton = false;
@@ -155,13 +152,13 @@ namespace Calculator
 
                 else if (minusButton && double.TryParse(input, out num))
                 {
-                    double finalResult = result - num; 
-                    textbox.Text = finalResult.ToString();  
-                   // input = finalResult.ToString();
+                    double finalResult = result - num;
+                    textbox.Text = finalResult.ToString();
+                    // input = finalResult.ToString();
                     minusButton = false;
                 }
 
-                else if (mulButton  && double.TryParse(input, out num))
+                else if (mulButton && double.TryParse(input, out num))
                 {
                     double finalResult = result * num;
                     textbox.Text = finalResult.ToString();
@@ -181,7 +178,7 @@ namespace Calculator
 
             else if (content == "C")
             {
-                input = "";           
+                input = "";
                 result = 0;
                 plusButton = false;
                 minusButton = false;
@@ -189,11 +186,11 @@ namespace Calculator
                 divButton = false;
                 textbox.Text = "0";
             }
-            
-            
+
+
         }
 
-       
+
     }
 
 
