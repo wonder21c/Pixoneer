@@ -1,29 +1,21 @@
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System;
 
 namespace Calculator
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         string input = "";
-        double num = 0;
         double result = 0;
-        bool firstNum = true;
+        string currentOperator = "";
+        bool isFirstInput = true;
+
         public MainWindow()
         {
             InitializeComponent();
         }
+
         private void button_Click(object sender, RoutedEventArgs e)
         {
             Button btn = sender as Button;
@@ -34,69 +26,63 @@ namespace Calculator
                 input += content;
                 textbox.Text = input;
             }
-
-
-
-
             else if (content == "+" || content == "-" || content == "*" || content == "/")
             {
-                if (!string.IsNullOrEmpty(input))
-                {
-                    double num;
-
-                    if (double.TryParse(input, out num))
-                    {
-                        if (firstNum)
-                        {
-                            result = num;
-                            firstNum = false;
-                        }
-                        else
-                        {
-                            switch (content)
-                            {
-                                case "+":
-                                    result += num; break;
-
-                                case "-":
-                                    result -= num; break;
-
-                                case "*":
-                                    result *= num; break;
-
-                                case "/":
-                                    result /= num; break;
-                            }
-                        }
-                        
-                    }
-                    input = "";
-                    //textbox.Text = result.ToString();
-                }
+                ApplyPreviousOperation();
+                currentOperator = content;
             }
-
-
             else if (content == "=")
             {
+                ApplyPreviousOperation();
                 textbox.Text = result.ToString();
-                //input = result.ToString();
-                firstNum = true;
-
+                input = result.ToString(); // 결과를 다음 입력으로 사용
+                currentOperator = "";
+                isFirstInput = true; // 다음 계산을 위해 초기화
             }
-
             else if (content == "C")
             {
                 input = "";
                 result = 0;
-
+                currentOperator = "";
+                isFirstInput = true;
                 textbox.Text = "0";
             }
-
-
-
-
-
         }
 
+        private void ApplyPreviousOperation()
+        {
+            if (!string.IsNullOrEmpty(input))
+            {
+                double number;
+                if (double.TryParse(input, out number))
+                {
+                    if (isFirstInput)
+                    {
+                        result = number;
+                        isFirstInput = false;
+                    }
+                    else
+                    {
+                        switch (currentOperator)
+                        {
+                            case "+":
+                                result += number;
+                                break;
+                            case "-":
+                                result -= number;
+                                break;
+                            case "*":
+                                result *= number;
+                                break;
+                            case "/":
+                                result /= number;
+                                break;
+                        }
+                    }
+                }
+                input = "";
+                textbox.Text = result.ToString();
+            }
+        }
     }
 }
