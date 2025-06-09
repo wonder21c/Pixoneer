@@ -14,6 +14,19 @@ namespace AddressBook
             InitializeComponent();
         }
 
+        public AddPerson(Person selectedPerson)
+        {
+            InitializeComponent();
+            if (selectedPerson != null)
+            {
+                NameBox.Text = selectedPerson.name;
+                TeamBox.Text = selectedPerson.team;
+                GradeBox.Text = selectedPerson.grade;
+                PhoneBox.Text = selectedPerson.phoneNum;
+                EmailBox.Text = selectedPerson.email;
+            }
+        }
+
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
             NewPerson = new Person
