@@ -6,23 +6,25 @@
         xmlns:local="clr-namespace:AddressBook"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <DataGrid x:Name="PersonInfo" Height="320" VerticalAlignment="Top" Margin="0,100,0,0" SelectionChanged="DataGrid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="이름" Binding="{Binding Path=name}" Width="130"/>
-                <DataGridTextColumn Header="소속" Binding="{Binding Path=team}" Width="130"/>
-                <DataGridTextColumn Header="직급" Binding="{Binding Path=grade}" Width="130"/>
-                <DataGridTextColumn Header="연락처" Binding="{Binding Path=phoneNum}" Width="200"/>
-                <DataGridTextColumn Header="메일" Binding="{Binding Path=email}" Width="*"/>
+	<Grid>
+		<DataGrid x:Name="PersonInfo" Height="320" VerticalAlignment="Top" Margin="0,100,0,0" SelectionChanged="DataGrid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False">
+			<DataGrid.Columns>
+				<DataGridTextColumn Header="이름" Binding="{Binding Path=name}" Width="130"/>
+				<DataGridTextColumn Header="소속" Binding="{Binding Path=team}" Width="130"/>
+				<DataGridTextColumn Header="직급" Binding="{Binding Path=grade}" Width="130"/>
+				<DataGridTextColumn Header="연락처" Binding="{Binding Path=phoneNum}" Width="200"/>
+				<DataGridTextColumn Header="메일" Binding="{Binding Path=email}" Width="*"/>
 
 
-            </DataGrid.Columns>
-        </DataGrid>
-        <ComboBox x:Name="InfoList"  Height="30" Width="90"  VerticalAlignment="Top" HorizontalAlignment="Center"  Margin="0,35,0,0"/>
-        <TextBlock TextWrapping="Wrap" Text="검색하세요"  VerticalAlignment="Top" HorizontalAlignment="Left" Height="30" Width="90" Margin="483,35,0,0"/>
-        <Button Content="검색" HorizontalAlignment="Left" Height="30" Margin="594,33,0,0" VerticalAlignment="Top" Width="90"/>
-        <Button Content="추가" HorizontalAlignment="Left" Height="30" Margin="699,33,0,0" VerticalAlignment="Top" Width="90" Click="Button_Click"/>
-    </Grid>
-
-    
+			</DataGrid.Columns>
+		</DataGrid>
+        <ComboBox x:Name="InfoList"  Height="30" Width="90"  VerticalAlignment="Top" HorizontalAlignment="Center"  Margin="0,40,0,0" SelectedIndex="0"/>
+        <Border BorderBrush="Black" BorderThickness="0.3" 
+        Height="30" Width="122" Margin="472,40,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
+            <TextBlock  TextWrapping="Wrap" Text="검색하세요" 
+               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Border>
+        <Button Content="검색" HorizontalAlignment="Left" Height="30" Margin="594,40,0,0" VerticalAlignment="Top" Width="90"/>
+        <Button Content="추가" HorizontalAlignment="Left" Height="30" Margin="699,40,0,0" VerticalAlignment="Top" Width="90" Click="Button_Click"/>
+	</Grid>
 </Window>
