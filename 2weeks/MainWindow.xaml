@@ -7,17 +7,22 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
 	<Grid>
-		<DataGrid x:Name="PersonInfo" Height="320" VerticalAlignment="Top" Margin="0,100,0,0" SelectionChanged="DataGrid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False">
-			<DataGrid.Columns>
-				<DataGridTextColumn Header="이름" Binding="{Binding Path=name}" Width="130"/>
-				<DataGridTextColumn Header="소속" Binding="{Binding Path=team}" Width="130"/>
-				<DataGridTextColumn Header="직급" Binding="{Binding Path=grade}" Width="130"/>
-				<DataGridTextColumn Header="연락처" Binding="{Binding Path=phoneNum}" Width="200"/>
-				<DataGridTextColumn Header="메일" Binding="{Binding Path=email}" Width="*"/>
-
-
-			</DataGrid.Columns>
-		</DataGrid>
+        <DataGrid x:Name="PersonInfo" Height="320" VerticalAlignment="Top" Margin="0,100,0,0" SelectionChanged="DataGrid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False"
+                  SelectionMode="Extended">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="이름" Binding="{Binding Path=name}" Width="130"/>
+                <DataGridTextColumn Header="소속" Binding="{Binding Path=team}" Width="130"/>
+                <DataGridTextColumn Header="직급" Binding="{Binding Path=grade}" Width="130"/>
+                <DataGridTextColumn Header="연락처" Binding="{Binding Path=phoneNum}" Width="200"/>
+                <DataGridTextColumn Header="메일" Binding="{Binding Path=email}" Width="*"/>
+            </DataGrid.Columns>
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="수정" Click="Edit_Click"/>
+                    <MenuItem Header="삭제" Click="Delete_Click"/>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+        </DataGrid>
         <ComboBox x:Name="InfoList"  Height="30" Width="90"  VerticalAlignment="Top" HorizontalAlignment="Center"  Margin="0,40,0,0" SelectedIndex="0"/>
         <Border BorderBrush="Black" BorderThickness="0.3" 
         Height="30" Width="122" Margin="472,40,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
