@@ -77,3 +77,112 @@
 
 ---
 
+
+좋아! 이번에 올려준 `AddPerson` 클래스는 주소록에서 **새 사람 정보를 입력하거나 기존 사람 정보를 수정하는 창(Window)** 역할을 하는 WPF 윈도우야. 이 창의 동작과 설계 의도를 상세히 설명해줄게.
+
+---
+
+## `AddPerson` 클래스 개요
+
+* WPF `Window`를 상속해서 만든 별도의 창.
+* 사용자에게 사람(Person) 정보를 입력받거나, 이미 존재하는 정보를 보여줘서 수정 가능.
+* 최종적으로 `NewPerson` 속성에 입력된 정보를 담아서 메인 윈도우에 전달.
+
+---
+
+## 주요 멤버와 메서드
+
+### 1. 속성
+
+```csharp
+public Person NewPerson { get; set; }
+```
+
+* 창에서 입력된/수정된 사람 정보를 저장하는 프로퍼티.
+* 외부에서 이 창을 `ShowDialog()`로 띄우고, 닫힐 때 이 속성을 읽어서 실제 데이터를 추가/수정에 활용.
+
+---
+
+### 2. 생성자
+
+```csharp
+public AddPerson()
+{
+    InitializeComponent();
+}
+```
+
+* **새 사람 추가용 생성자.**
+* UI 초기화만 수행하며, 모든 입력란은 빈 상태로 시작.
+
+```csharp
+public AddPerson(Person selectedPerson)
+{
+    InitializeComponent();
+    if (selectedPerson != null)
+    {
+        NameBox.Text = selectedPerson.name;
+        TeamBox.Text = selectedPerson.team;
+        GradeBox.Text = selectedPerson.grade;
+        PhoneBox.Text = selectedPerson.phoneNum;
+        EmailBox.Text = selectedPerson.email;
+    }
+}
+```
+
+* **기존 사람 정보 수정용 생성자.**
+* 전달받은 `selectedPerson` 객체를 바탕으로 각 입력 TextBox에 기존 데이터를 미리 채워 넣음.
+* 사용자는 화면에 뜬 정보를 수정 가능.
+
+---
+
+### 3. 버튼 클릭 이벤트 핸들러
+
+```csharp
+private void AddButton_Click(object sender, RoutedEventArgs e)
+{
+    NewPerson = new Person
+    {
+        name = NameBox.Text,
+        team = TeamBox.Text,
+        grade = GradeBox.Text,
+        phoneNum = PhoneBox.Text,
+        email = EmailBox.Text
+    };
+    DialogResult = true;
+    Close();
+}
+```
+
+* 사용자가 ‘추가’ 또는 ‘저장’ 버튼(아마도 `AddButton`)을 누르면 실행됨.
+* 각 입력란에서 텍스트를 읽어 새 `Person` 객체를 만들어 `NewPerson`에 할당.
+* `DialogResult = true`로 모달 창에서 ‘성공’ 상태를 알리고 창을 닫음.
+* 호출한 메인 윈도우는 `ShowDialog()` 반환값과 `NewPerson` 속성을 통해 사용자가 입력한 데이터를 받아서 처리.
+
+---
+
+## UI 컨트롤 (추정)
+
+* `NameBox`, `TeamBox`, `GradeBox`, `PhoneBox`, `EmailBox` 는 각각 이름, 소속, 직급, 연락처, 이메일을 입력받는 **TextBox**.
+* `AddButton`은 저장/추가 버튼으로, 클릭 시 데이터를 수집해 창을 닫음.
+
+---
+
+## 설계 의도와 장점
+
+* **재사용성**: 추가와 수정 둘 다 한 창에서 처리. 생성자 오버로드로 구분.
+* **간결함**: UI 입력을 그대로 `Person` 객체로 변환해 반환.
+* **모달 방식**: `ShowDialog()`를 이용해 메인 윈도우가 창 닫힐 때까지 기다림. 사용자 입력 완료 후에만 데이터 처리.
+* **명확한 결과 전달**: `DialogResult`와 `NewPerson`을 통해 호출자에게 성공 여부와 결과 데이터를 전달.
+
+---
+
+## 참고: 메모리/효율 측면
+
+* UI 컨트롤(TextBox)의 텍스트를 한 번만 읽고 `Person` 객체를 만들기 때문에 불필요한 메모리 복사나 추가 처리가 없음.
+* 창을 닫을 때까지 사용자 입력을 기다리므로, 데이터 유효성 검증 같은 추가 로직을 넣기도 쉽다 (현재 코드는 없음).
+
+---
+
+필요하면 UI XAML 코드도 보여줘. 그래야 어떤 버튼과 텍스트박스가 연결돼 있는지 더 명확히 설명해줄 수 있어. 궁금한 점 있으면 언제든 물어봐!
+
