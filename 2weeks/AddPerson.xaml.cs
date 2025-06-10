@@ -1,13 +1,13 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using AddressBook.Model;
+using AddressBook;
 
 namespace AddressBook
 {
     public partial class AddPerson : Window
     {
-        public Person NewPerson { get; private set; }
+        public Person NewPerson { get;  set; }
 
         public AddPerson()
         {
