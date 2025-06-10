@@ -1,5 +1,5 @@
 
-namespace AddressBook.Model
+namespace AddressBook
 {
     public class Person
     {
@@ -13,6 +13,7 @@ namespace AddressBook.Model
         {
             return $"{name}|{team}|{grade}|{phoneNum}|{email}";
         }
+        
 
         public static Person FromString(string line)
         {
