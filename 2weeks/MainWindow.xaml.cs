@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace AddressBook
 {
@@ -123,18 +124,41 @@ namespace AddressBook
 
             if (string.IsNullOrEmpty(searchText) || selectedFilter == "전체")
             {
-                PersonInfo.ItemsSource = people; 
+                PersonInfo.ItemsSource = people;
             }
             else
             {
+                SearchTextBox.IsReadOnly = false;
+
                 var filteredPeople = people.Where(p =>
                     (selectedFilter == "이름" && p.name != null && p.name.ToLower().Contains(searchText)) ||
                     (selectedFilter == "소속" && p.team != null && p.team.ToLower().Contains(searchText)) ||
                     (selectedFilter == "직급" && p.grade != null && p.grade.ToLower().Contains(searchText))
                 ).ToList();
-                PersonInfo.ItemsSource = filteredPeople; 
+                PersonInfo.ItemsSource = filteredPeople;
             }
         }
 
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter) SearchButton_Click(null,null);
+        }
+        private void InfoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (InfoList.SelectedIndex == 0) 
+            {
+                SearchTextBox.IsReadOnly = true;
+                SearchTextBox.Text = string.Empty;
+                PersonInfo.ItemsSource = people;
+                SearchTextBox.Background = Brushes.Gray;
+            }
+            else
+            {
+                SearchTextBox.IsReadOnly = false;
+                SearchTextBox.Background = Brushes.White;
+                //PersonInfo.ItemsSource = people;
+            }
+    
+        }
     }
 }
