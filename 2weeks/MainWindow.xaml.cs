@@ -3,7 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using AddressBook.Model;
+using AddressBook;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -18,22 +18,30 @@ namespace AddressBook
         {
             InitializeComponent();
             PersonInfo.ItemsSource = people;
-            InfoList.ItemsSource = Info;
+            InfoList.ItemsSource = SearchList;
             LoadDataFromFile();
         }
 
       
 
-        ObservableCollection<Person> people = new ObservableCollection<Person>();
+        ObservableCollection<Person> people = new ObservableCollection<Person>(); //동적 데이터 컬렉션
         string filePath = "C:\\Users\\pixo\\Desktop\\손정우\\AddressBook\\data.txt";
 
-        public List<string> Info { get; set; } = new List<string>()
+        public List<string> Info { get; set; } = new List<string>() //자동 프로퍼티
         {
             "이름",
             "소속",
             "직위",
             "연락처",
             "이메일"
+        };
+
+        public List<string> SearchList { get; set; } = new List<string>()
+        {
+            "전체",
+            "이름",
+            "소속",
+            "직급"
         };
 
 
@@ -45,9 +53,9 @@ namespace AddressBook
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var addWindow = new AddPerson();
-            if (addWindow.ShowDialog() == true)
+            if (addWindow.ShowDialog() == true) // 모달 
             {
-                people.Add(addWindow.NewPerson);
+                people.Add(addWindow.NewPerson); //list에 추가
                 SaveDataToFile();
             }
         }
@@ -65,8 +73,7 @@ namespace AddressBook
                
                 var editWindow = new AddPerson(selectedPerson);
                 if (editWindow.ShowDialog() == true)
-                {
-                    
+                {                   
                     selectedPerson.name = editWindow.NewPerson.name;
                     selectedPerson.team = editWindow.NewPerson.team;
                     selectedPerson.grade = editWindow.NewPerson.grade;
@@ -83,8 +90,12 @@ namespace AddressBook
         {
             if (PersonInfo.SelectedItem is Person selectedPerson)
             {
-                people.Remove(selectedPerson);
-                SaveDataToFile(); 
+                if(MessageBox.Show("정말 삭제하시겠습니까?","삭제", MessageBoxButton.YesNo)==MessageBoxResult.Yes)
+                {
+                    people.Remove(selectedPerson);
+                    SaveDataToFile();
+
+                }
             }
         }
 
@@ -105,6 +116,25 @@ namespace AddressBook
             }
         }
 
+        private void SearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            string searchText = SearchTextBox.Text.ToLower();
+            var selectedFilter = InfoList.SelectedItem as string;
+
+            if (string.IsNullOrEmpty(searchText) || selectedFilter == "전체")
+            {
+                PersonInfo.ItemsSource = people; 
+            }
+            else
+            {
+                var filteredPeople = people.Where(p =>
+                    (selectedFilter == "이름" && p.name != null && p.name.ToLower().Contains(searchText)) ||
+                    (selectedFilter == "소속" && p.team != null && p.team.ToLower().Contains(searchText)) ||
+                    (selectedFilter == "직급" && p.grade != null && p.grade.ToLower().Contains(searchText))
+                ).ToList();
+                PersonInfo.ItemsSource = filteredPeople; 
+            }
+        }
 
     }
 }
