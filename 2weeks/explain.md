@@ -184,5 +184,117 @@ private void AddButton_Click(object sender, RoutedEventArgs e)
 
 ---
 
-필요하면 UI XAML 코드도 보여줘. 그래야 어떤 버튼과 텍스트박스가 연결돼 있는지 더 명확히 설명해줄 수 있어. 궁금한 점 있으면 언제든 물어봐!
+
+
+
+
+---
+좋아! 지금까지 보여준 세 개 코드 (`MainWindow`, `Person` 클래스, `AddPerson` 창)를 바탕으로, **프로그램이 실행되고 사용자와 상호작용할 때 코드가 어떻게 동작하는지 순서대로 전체 흐름**을 쉽게 설명해줄게.
+
+---
+
+# 주소록 프로그램 동작 흐름 정리
+
+---
+
+## 1. 프로그램 시작
+
+* WPF 앱 실행 → `MainWindow`가 열림 (`MainWindow` 클래스의 생성자 실행)
+* 생성자에서
+
+  * UI 컴포넌트 초기화 (`InitializeComponent()`)
+  * `people` 컬렉션과 `PersonInfo` DataGrid를 연결 (`PersonInfo.ItemsSource = people`)
+  * 검색 조건 ComboBox에 `SearchList` 바인딩 (`InfoList.ItemsSource = SearchList`)
+  * 데이터 파일(`data.txt`)에서 기존 저장된 사람 목록 읽기 (`LoadDataFromFile()`)
+* 읽은 데이터는 `Person` 객체 리스트로 변환 후 `people`에 추가 → UI에 목록 표시됨
+
+---
+
+## 2. 사용자 인터페이스 주요 기능
+
+---
+
+### (1) 사람 추가하기
+
+* 사용자가 **추가 버튼** 클릭 → `Button_Click` 이벤트 발생
+* `AddPerson` 창이 새로 열림 (기본 생성자 호출, 빈 입력란)
+* 사용자가 정보를 입력하고 **추가 버튼** 누르면 (`AddButton_Click` 이벤트)
+
+  * `AddPerson` 창 내에서 `NewPerson` 객체 생성 (입력 데이터 기반)
+  * `DialogResult = true`로 창 닫힘
+* `MainWindow`는 `ShowDialog()` 결과가 `true`면
+
+  * `NewPerson`을 `people` 컬렉션에 추가
+  * `SaveDataToFile()` 호출해 파일에 새 목록 저장
+* UI(DataGrid) 자동 갱신됨 (ObservableCollection 덕분)
+
+---
+
+### (2) 사람 수정하기
+
+* 사용자가 DataGrid에서 한 사람 선택 → `Edit_Click` 버튼 클릭
+* `AddPerson` 창이 열림 (수정 생성자 호출, 선택된 사람 정보가 입력란에 미리 채워짐)
+* 사용자가 내용을 수정하고 **추가/저장 버튼** 누르면
+
+  * `NewPerson` 객체가 새 값으로 생성됨
+  * 창 닫힘(`DialogResult = true`)
+* `MainWindow`는 선택된 `Person` 객체 속성을 새 값으로 일일이 업데이트
+* DataGrid 갱신 (`Items.Refresh()`) 후 `SaveDataToFile()` 호출해 저장
+
+---
+
+### (3) 사람 삭제하기
+
+* 사용자가 DataGrid에서 한 사람 선택 → `Delete_Click` 버튼 클릭
+* 삭제 확인 메시지 박스 출력
+* 사용자 확인하면 `people`에서 해당 사람 제거
+* `SaveDataToFile()` 호출해 변경사항 저장
+* DataGrid 자동 갱신
+
+---
+
+### (4) 검색 기능
+
+* 사용자가 검색 조건(전체, 이름, 소속, 직급) 선택
+
+  * ‘전체’ 선택 시 검색창 비활성화, 전체 리스트 표시
+  * 특정 조건 선택 시 검색창 활성화
+* 검색어 입력 후 **검색 버튼 클릭** 또는 **엔터키 누름**
+* `SearchButton_Click` 실행:
+
+  * ‘전체’면 전체 `people` 리스트 보여주고,
+  * 조건별로 `people` 리스트에서 필터링한 결과만 DataGrid에 보여줌
+
+---
+
+## 3. 데이터 저장 및 불러오기
+
+* 모든 추가, 수정, 삭제 작업 후 `SaveDataToFile()` 호출됨
+
+  * `people` 컬렉션의 각 `Person`을 `ToString()`으로 문자열 변환 (구분자 `|`로 연결)
+  * 전체 리스트를 `data.txt` 파일에 덮어쓰기 저장
+* 프로그램 시작 시 `LoadDataFromFile()`가 파일에서 모든 라인을 읽어와
+
+  * 각 줄을 `Person.FromString()`으로 파싱해 `people`에 추가
+
+---
+
+# 핵심 요약
+
+| 단계         | 동작                                              | 주요 코드 위치/핵심 메서드                             |                                          |
+| ---------- | ----------------------------------------------- | ------------------------------------------- | ---------------------------------------- |
+| 프로그램 시작    | 파일에서 기존 데이터 읽어와 UI에 표시                          | `MainWindow()` 생성자, `LoadDataFromFile()`    |                                          |
+| 사람 추가      | `AddPerson` 창 띄워 입력받고, 결과를 리스트에 추가 후 파일 저장      | `Button_Click`, `AddPerson.AddButton_Click` |                                          |
+| 사람 수정      | 선택된 사람 정보로 `AddPerson` 창 띄워 수정 후 리스트에 반영, 파일 저장 | `Edit_Click`, `AddPerson.AddButton_Click`   |                                          |
+| 사람 삭제      | 선택된 사람 리스트에서 제거 후 파일 저장                         | `Delete_Click`                              |                                          |
+| 검색 기능      | 조건과 키워드로 리스트 필터링 후 UI 갱신                        | `SearchButton_Click`                        |                                          |
+| 데이터 파일 입출력 | 리스트 ↔ 텍스트 파일 (구분자 \`                            | \` 문자열 변환)                                  | `SaveDataToFile()`, `LoadDataFromFile()` |
+
+---
+
+이 흐름대로 실행되니, 사용자는 주소록을 편리하게 관리할 수 있고, 변경사항은 파일에 안전하게 저장돼 다음 실행 때도 유지되는 거야.
+
+---
+
+필요하면 UI XAML 구조도 같이 보면서 UI 이벤트가 어떻게 연결되는지 설명해줄 수 있어. 더 궁금한 부분 있으면 알려줘!
 
