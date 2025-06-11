@@ -37,7 +37,7 @@ namespace AddressBook
                 phoneNum = PhoneBox.Text,
                 email = EmailBox.Text
             };
-            DialogResult = true;
+            DialogResult = true; //대화상자 수락
             Close();
         }
     }
