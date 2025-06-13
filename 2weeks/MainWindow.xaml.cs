@@ -20,26 +20,19 @@ namespace AddressBook
         public MainWindow()
         {
             InitializeComponent();
-            PersonInfo.ItemsSource = people; //data grid에 people 컬렉션을 바인딩
-            InfoList.ItemsSource = SearchList; //combobox에 SearchList를 바인딩
+        }
+
+        ObservableCollection<Person> listPeoples = new ObservableCollection<Person>(); //동적 데이터 컬렉션
+        string filePath = "D:\\손정우\\AddressBook\\data.csv";
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.InfoList.SelectedIndex = 0;
+            dgPersonInfo.ItemsSource = listPeoples; //data grid에 people 컬렉션을 바인딩
             LoadDataFromFile();
         }
 
-
-
-        ObservableCollection<Person> people = new ObservableCollection<Person>(); //동적 데이터 컬렉션
-        string filePath = "C:\\Users\\pixo\\Desktop\\손정우\\AddressBook\\data.csv";
-
- 
-
-        public List<string> SearchList { get; set; } = new List<string>()
-        {
-            "전체",
-            "이름",
-            "소속",
-            "직급"
-        };
-
+  
         private bool IsFileLocked(string path)
         {
             try
@@ -51,35 +44,6 @@ namespace AddressBook
             catch (IOException)
             {
                 return true; 
-            }
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            if (IsFileLocked(filePath))
-            {
-                MessageBox.Show("csv파일이 열려있어 추가할 수 없습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            var addWindow = new AddPerson();
-            if (addWindow.ShowDialog() == true) // 모달 
-            {
-                people.Add(addWindow.NewPerson); //list에 추가
-                SaveDataToFile();
-            }
-        }
-
-        private void SaveDataToFile()
-        {
-            try
-            {
-                var lines = people.Select(p => p.ToCsV()); //각 Person 객체를 문자열로 변환
-                File.WriteAllLines(filePath, lines, Encoding.UTF8);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("csv파일이 열려있어 저장할 수 없습니다.: " + ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -95,9 +59,9 @@ namespace AddressBook
                 var lines = File.ReadAllLines(filePath, Encoding.UTF8);
                 foreach (var line in lines)
                 {
-                    var person = Person.FromCsv(line);
+                    var person = Person.FromCSV(line);
                     if (person != null)
-                        people.Add(person);
+                        listPeoples.Add(person);
                 }
             }
             catch (Exception ex)
@@ -106,7 +70,35 @@ namespace AddressBook
                 Application.Current.Shutdown(); //예외 발생시 프로그램 종료
 
             }
+        }
 
+        private void SaveDataToFile()
+        {
+            try
+            {
+                var lines = listPeoples.Where(p => p != null).Select(p => p.ToCSV()); //각 Person 객체를 문자열로 변환
+                File.WriteAllLines(filePath, lines, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show("csv파일이 열려있어 저장할 수 없습니다.: " + ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void AddButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsFileLocked(filePath))
+            {
+                MessageBox.Show("csv파일이 열려있어 추가할 수 없습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var addWindow = new AddPerson();
+            if (addWindow.ShowDialog() == true ) // 모달 
+            {
+                listPeoples.Add(addWindow.NewPerson); //list에 추가
+                SaveDataToFile();
+            }
         }
 
         private void Edit_Click(object sender, RoutedEventArgs e)
@@ -117,9 +109,8 @@ namespace AddressBook
                 return;
             }
 
-            if (PersonInfo.SelectedItem is Person selectedPerson) //selectedPerson이 Person 타입인지 확인 후 할당
+            if (dgPersonInfo.SelectedItem is Person selectedPerson) //selectedPerson이 Person 타입인지 확인 후 할당
             {
-
                 var editWindow = new AddPerson(selectedPerson);
                 if (editWindow.ShowDialog() == true)
                 {
@@ -129,7 +120,7 @@ namespace AddressBook
                     selectedPerson.phoneNum = editWindow.NewPerson.phoneNum;
                     selectedPerson.email = editWindow.NewPerson.email;
 
-                    PersonInfo.Items.Refresh();
+                    dgPersonInfo.Items.Refresh();
                     SaveDataToFile();
                 }
             }
@@ -142,12 +133,11 @@ namespace AddressBook
                 MessageBox.Show("csv파일이 열려있어 삭제할 수 없습니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-
-            if (PersonInfo.SelectedItem is Person selectedPerson)
+            if (dgPersonInfo.SelectedItem is Person selectedPerson)
             {
                 if (MessageBox.Show("정말 삭제하시겠습니까?", "삭제", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
-                    people.Remove(selectedPerson);
+                    listPeoples.Remove(selectedPerson);
                     SaveDataToFile();
 
                 }
@@ -156,23 +146,30 @@ namespace AddressBook
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
         {
-            string searchText = SearchTextBox.Text.ToLower();
-            var selectedFilter = InfoList.SelectedItem as string;
+            string searchText = edtSearchText.Text.ToLower();
+            var selectedFilter = (InfoList.SelectedItem as ComboBoxItem).Content;
 
-            if (string.IsNullOrEmpty(searchText) || selectedFilter == "전체")
+            if (string.IsNullOrEmpty(searchText))
             {
-                PersonInfo.ItemsSource = people;
+                dgPersonInfo.ItemsSource = listPeoples;
             }
             else
             {
-                SearchTextBox.IsReadOnly = false;
-
-                var filteredPeople = people.Where(p =>
-                    (selectedFilter == "이름" && p.name != null && p.name.ToLower().Contains(searchText)) ||
-                    (selectedFilter == "소속" && p.team != null && p.team.ToLower().Contains(searchText)) ||
-                    (selectedFilter == "직급" && p.grade != null && p.grade.ToLower().Contains(searchText))
-                ).ToList();
-                PersonInfo.ItemsSource = filteredPeople;
+                edtSearchText.IsReadOnly = false;
+                List<Person> list = new List<Person>();
+                switch(selectedFilter)
+                {
+                    case "이름":
+                        list = listPeoples.Where(o=>o.name.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) > -1).ToList();
+                        break;
+                    case "소속":
+                        list = listPeoples.Where(o => o.team.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) > -1).ToList();
+                        break;
+                    case "직급":
+                        list = listPeoples.Where(o => o.grade.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) > -1).ToList();
+                        break;
+                }       
+                dgPersonInfo.ItemsSource = list;
             }
         }
 
@@ -180,22 +177,21 @@ namespace AddressBook
         {
             if (e.Key == Key.Enter) SearchButton_Click(null, null);
         }
+
         private void InfoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (InfoList.SelectedIndex == 0)
             {
-                SearchTextBox.IsReadOnly = true;
-                SearchTextBox.Text = string.Empty;
-                PersonInfo.ItemsSource = people;
-                SearchTextBox.Background = Brushes.Gray;
+                edtSearchText.IsReadOnly = true;
+                edtSearchText.Text = string.Empty;
+                dgPersonInfo.ItemsSource = listPeoples;
+                edtSearchText.Background = Brushes.Gray;
             }
             else
             {
-                SearchTextBox.IsReadOnly = false;
-                SearchTextBox.Background = Brushes.White;
-                //PersonInfo.ItemsSource = people;
+                edtSearchText.IsReadOnly = false;
+                edtSearchText.Background = Brushes.White;               
             }
-
-        }
+        }       
     }
 }
