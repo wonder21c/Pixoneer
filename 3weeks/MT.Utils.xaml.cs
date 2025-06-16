@@ -47,13 +47,7 @@ namespace MT.ExtractorToCSV
                     TargetPath = f,
                     FileSize = new FileInfo(f).Length
                 }).ToArray();
-
-                foreach (var filePath in fileList)
-                {
-                    var folderPath = Path.GetDirectoryName(filePath);
-                    this.LoadVideoData(folderPath, Path.GetFileName(filePath));
-                }
-
+                
                 this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(this.SourceList)));
                 MessageBox.Show("Complete");
             }
@@ -223,6 +217,19 @@ namespace MT.ExtractorToCSV
                     return "Folder";
                 else
                     return "N/A";
+            }
+        }
+
+        public string FileSizeMb
+        {
+            get
+            {
+                if (FileSize == 0)
+                {
+                    return "0 MB";
+                }
+                double mb = FileSize / 1024d / 1024d;
+                return $"{mb:N2} MB";
             }
         }
 
