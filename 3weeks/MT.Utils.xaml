@@ -30,31 +30,73 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TreeView Grid.Column="0" Name="tvSource" ItemsSource="{Binding SourceList, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=local:MainWindow}}" Margin="5">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Items}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="20"/>
-                                <ColumnDefinition Width="20"/>
-                                <ColumnDefinition Width="60"/>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="50"/>
-                                <ColumnDefinition Width="150"/>
-                            </Grid.ColumnDefinitions>
-                            <CheckBox IsChecked="{Binding IsChecked}" Grid.Column="0"/>
-                            <TextBlock Text="{Binding Level}" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <TextBlock Text="{Binding Type}" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <TextBlock Text="{Binding Name}" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding TargetPath}" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding FileLocation}" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding FileSizeMb}" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right"/>
-                        </Grid>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-            <TreeView Grid.Column="1" Name="tvOutput" Margin="5"/>
+            <!-- 좌측: 헤더 + TreeView -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="0.03*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <!-- 헤더 -->
+                <Grid Grid.Row="0" Margin="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="55"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="60"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="선택" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White" Padding="0,4"/>
+                    <TextBlock Text="Level" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White" Padding="0,4"/>
+                    <TextBlock Text="Type" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White" Padding="0,4"/>
+                    <TextBlock Text="Name" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold" Foreground="White" Padding="4,4,0,4"/>
+                    <TextBlock Text="TargetPath" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold" Foreground="White" Padding="4,4,0,4"/>
+                    <TextBlock Text="FileLocation" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold" Foreground="White" Padding="4,4,0,4"/>
+                    <TextBlock Text="FileSize(MB)" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="Bold" Foreground="White" Padding="0,4,4,4"/>
+                </Grid>
+                <!-- TreeView -->
+                <TreeView Grid.Row="1" Name="tvSource"
+                          ItemsSource="{Binding SourceList, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=local:MainWindow}}"
+                          Margin="0,5,0,0"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding Items}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="55"/>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="50"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox IsChecked="{Binding IsChecked}" Grid.Column="0"/>
+                                <TextBlock Text="{Binding Level}" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Type}" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name}" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding TargetPath}" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding FileLocation}" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding FileSizeMb}" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right"/>
+                            </Grid>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Grid>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="0.03*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Output" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold" Foreground="White" Margin="5,0,0,0"/>
+                </Grid>
+                <TreeView Grid.Row="1" Name="tvOutput" Margin="0,5,0,0" Grid.RowSpan="2"/>
+            </Grid>
         </Grid>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
