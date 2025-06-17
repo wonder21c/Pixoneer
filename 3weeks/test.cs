@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
+using System.Diagnostics;
 
 namespace MT.ExtractorToCSV
 {
@@ -29,7 +30,7 @@ namespace MT.ExtractorToCSV
         }
 
         public ObservableCollection<TargetInfo> SourceList { get; set; } = new ObservableCollection<TargetInfo>();
-        public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
+        //public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new Microsoft.Win32.OpenFileDialog();
@@ -63,25 +64,39 @@ namespace MT.ExtractorToCSV
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
-            int total = checkedItems.Count;
-            int completed = 0;
 
-            // 병렬 처리
-            await Task.Run(() =>
-            {
-                Parallel.ForEach(checkedItems, (item) =>
+            var tasks = checkedItems.Select(item =>
+                Task.Run(() =>
                 {
-                    var folderPath = System.IO.Path.GetDirectoryName(item.TargetPath);
-                    var fileName = System.IO.Path.GetFileName(item.TargetPath);
+                    var folderPath = Path.GetDirectoryName(item.TargetPath);
+                    var fileName = Path.GetFileName(item.TargetPath);
                     LoadVideoData(folderPath, fileName, item);
+                })
+            ).ToArray();
 
-                    Dispatcher.Invoke(() =>
-                    {
-                       ++completed;
-                    });
-                });
-            });
+            await Task.WhenAll(tasks);
+
             MessageBox.Show("모든 파일 변환이 완료되었습니다.");
+        }
+
+        private void chkAllSelect_Checked(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in SourceList)
+                SetIsCheckedRecursive(item, true);
+        }
+
+        private void chkAllSelect_Unchecked(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in SourceList)
+                SetIsCheckedRecursive(item, false);
+        }
+
+        // 트리 구조 전체에 대해 체크/해제 적용
+        private void SetIsCheckedRecursive(TargetInfo item, bool isChecked)
+        {
+            item.IsChecked = isChecked;
+            foreach (var child in item.Items.OfType<TargetInfo>())
+                SetIsCheckedRecursive(child, isChecked);
         }
 
         void MakeTreeView_Source(TargetInfo _target)
@@ -97,32 +112,33 @@ namespace MT.ExtractorToCSV
                 _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = file });
             }
         }
-        
-        void MakeTreeView_Output(TargetInfo _target)
-        {
-
-        }
+    
 
         XVideoIO videoIO = new XVideoIO();
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
-            if (_filePath.Substring(0, 1) == @"\")
+            Debug.WriteLine($"Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
+
+            var videoIO = new XVideoIO(); // 각 스레드마다 인스턴스 생성
+
+            if (!string.IsNullOrEmpty(_filePath) && _filePath.Length > 1 && _filePath.Substring(0, 1) == @"\")
                 _filePath = _filePath.Substring(1, _filePath.Length - 1);
 
             string filePath = Path.Combine(_folderPath, _filePath);
             if (File.Exists(filePath))
             {
-                // 파일별로 독립적인 리스트 생성
                 var metadList = new List<MT_MV>();
                 DateTime lastReadMetad = DateTime.Now;
 
-                // 예시: 처리 시작
-                target.Progress = 0;
+                Dispatcher.Invoke(() => target.Progress = 0);
 
-                // 람다로 콜백 전달
-                XVideo video = this.videoIO.OpenFile(
+                int totalFrames = 0; // 전체 프레임 수를 알 수 있으면 할당, 모르면 대략적으로라도 추정
+                int processedFrames = 0;
+                const int progressStep = 100; // 100프레임마다 1%씩 올림
+
+                XVideo video = videoIO.OpenFile(
                     filePath,
                     @"XFFMPDriver",
                     true,
@@ -134,10 +150,25 @@ namespace MT.ExtractorToCSV
                         metad.SetData(data.PTS, data.GetData());
                         metadList.Add(metad);
                         lastReadMetad = DateTime.Now;
+
+                        processedFrames++;
+                        if (processedFrames % progressStep == 0)
+                        {
+                            double progress = Math.Min(99, processedFrames / 10.0); // 1000프레임이면 100%
+                            Dispatcher.Invoke(() => target.Progress = progress);
+                        }
                     },
                     null,
                     out string err
                 );
+
+                if (!string.IsNullOrEmpty(err))
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"파일: {filePath}\n에러: {err}");
+                    });
+                }
 
                 lastReadMetad = DateTime.Now;
                 while ((DateTime.Now - lastReadMetad).TotalSeconds < 1)
@@ -145,14 +176,16 @@ namespace MT.ExtractorToCSV
                     Thread.Sleep(10);
                 }
 
-                // 처리 완료 후
-                target.Progress = 100;
+                // 100%로 마무리
+                Dispatcher.Invoke(() => target.Progress = 100);
 
                 string csvPath = Path.Combine(_folderPath, "output", _filePath.Substring(0, _filePath.Length - 2) + "csv");
                 if (!Directory.Exists(Path.GetDirectoryName(csvPath)))
                     Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
                 GenerateMetadDataToCSV(csvPath, metadList);
             }
+
+            Debug.WriteLine($"End: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
         }
 
         void GenerateMetadDataToCSV(string _csvPath, List<MT_MV> metadList)
