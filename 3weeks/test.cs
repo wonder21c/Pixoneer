@@ -63,11 +63,6 @@ namespace MT.ExtractorToCSV
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
-
-            progProcess.Minimum = 0;
-            progProcess.Maximum = checkedItems.Count;
-            progProcess.Value = 0;
-
             int total = checkedItems.Count;
             int completed = 0;
 
@@ -78,17 +73,15 @@ namespace MT.ExtractorToCSV
                 {
                     var folderPath = System.IO.Path.GetDirectoryName(item.TargetPath);
                     var fileName = System.IO.Path.GetFileName(item.TargetPath);
-                    LoadVideoData(folderPath, fileName);
+                    LoadVideoData(folderPath, fileName, item);
 
                     Dispatcher.Invoke(() =>
                     {
-                        progProcess.Value = ++completed;
+                       ++completed;
                     });
                 });
             });
-            progProcess.Value = 100;
             MessageBox.Show("모든 파일 변환이 완료되었습니다.");
-            progProcess.Value = progProcess.Maximum;
         }
 
         void MakeTreeView_Source(TargetInfo _target)
@@ -113,7 +106,7 @@ namespace MT.ExtractorToCSV
         XVideoIO videoIO = new XVideoIO();
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
-        void LoadVideoData(string _folderPath, string _filePath)
+        void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
             if (_filePath.Substring(0, 1) == @"\")
                 _filePath = _filePath.Substring(1, _filePath.Length - 1);
@@ -124,6 +117,9 @@ namespace MT.ExtractorToCSV
                 // 파일별로 독립적인 리스트 생성
                 var metadList = new List<MT_MV>();
                 DateTime lastReadMetad = DateTime.Now;
+
+                // 예시: 처리 시작
+                target.Progress = 0;
 
                 // 람다로 콜백 전달
                 XVideo video = this.videoIO.OpenFile(
@@ -148,6 +144,9 @@ namespace MT.ExtractorToCSV
                 {
                     Thread.Sleep(10);
                 }
+
+                // 처리 완료 후
+                target.Progress = 100;
 
                 string csvPath = Path.Combine(_folderPath, "output", _filePath.Substring(0, _filePath.Length - 2) + "csv");
                 if (!Directory.Exists(Path.GetDirectoryName(csvPath)))
@@ -285,6 +284,18 @@ namespace MT.ExtractorToCSV
                 this.FileSize = new FileInfo(this.targetPath).Length;
             else
                 this.FileSize = 0;
+        }
+
+        double progress = 0;
+        public double Progress
+        {
+            get => progress;
+            set
+            {
+                progress = value;
+                if (!this.isManualNotifyPropertyChanged)
+                    this.OnPropertyChanged();
+            }
         }
     }
 
