@@ -64,15 +64,29 @@ namespace MT.ExtractorToCSV
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
+            int maxConcurrentTasks = 5;
+            var semaphore = new SemaphoreSlim(maxConcurrentTasks);
 
-            Task[] tasks = checkedItems.Select(item =>
-                Task.Run(() =>
+            List<Task> tasks = new List<Task>();
+
+            foreach (var item in checkedItems)
+            {
+                await semaphore.WaitAsync(); 
+
+                tasks.Add(Task.Run(() =>
                 {
-                    var folderPath = Path.GetDirectoryName(item.TargetPath);
-                    var fileName = Path.GetFileName(item.TargetPath);
-                    LoadVideoData(folderPath, fileName, item);
-                })
-            ).ToArray();
+                    try
+                    {
+                        var folderPath = Path.GetDirectoryName(item.TargetPath);
+                        var fileName = Path.GetFileName(item.TargetPath);
+                        LoadVideoData(folderPath, fileName, item);
+                    }
+                    finally
+                    {
+                        semaphore.Release(); 
+                    }
+                }));
+            }
 
             await Task.WhenAll(tasks);
 
@@ -155,7 +169,7 @@ namespace MT.ExtractorToCSV
                     null,
                     out string err1
                 );
-                channel = video.GetChannel(0);
+                //channel = video.GetChannel(0);
                 //channel.Activate();
                 //double totalFrames = channel.GetNumFramesVideo();
                 Dispatcher.Invoke(() =>
