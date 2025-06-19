@@ -2,9 +2,12 @@ using Microsoft.Win32;
 using Pixoneer.NXDL.NXVideo;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -15,8 +18,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 
 namespace MT.ExtractorToCSV
 {
@@ -134,6 +135,8 @@ namespace MT.ExtractorToCSV
 
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
             
