@@ -2,9 +2,12 @@ using Microsoft.Win32;
 using Pixoneer.NXDL.NXVideo;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -29,10 +32,10 @@ namespace MT.ExtractorToCSV
         }
 
         public ObservableCollection<TargetInfo> SourceList { get; set; } = new ObservableCollection<TargetInfo>();
-        public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
+        //public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog();
+            OpenFileDialog dialog = new OpenFileDialog();
             dialog.CheckFileExists = true;
             dialog.CheckPathExists = true;
             dialog.Multiselect = true;
@@ -56,87 +59,157 @@ namespace MT.ExtractorToCSV
 
         private async void btnConvert_Click(object sender, RoutedEventArgs e)
         {
-            var checkedItems = SourceList.Where(x => x.IsChecked).ToList();
+            var checkedItems = SourceList
+                .Where(x => x.IsChecked)
+                .OrderBy(x => new FileInfo(x.TargetPath).Length) 
+                .ToList();
 
             if (checkedItems.Count == 0)
             {
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
+           int maxConcurrentTasks = 5;
+           var semaphore = new SemaphoreSlim(maxConcurrentTasks);
 
-            progProcess.Minimum = 0;
-            progProcess.Maximum = checkedItems.Count;
-            progProcess.Value = 0;
-
-            int total = checkedItems.Count;
-            int completed = 0;
-
-            // 병렬 처리
-            await Task.Run(() =>
+            List<Task> tasks = new List<Task>();
+            
+            foreach (var item in checkedItems)
             {
-                Parallel.ForEach(checkedItems, (item) =>
-                {
-                    var folderPath = System.IO.Path.GetDirectoryName(item.TargetPath);
-                    var fileName = System.IO.Path.GetFileName(item.TargetPath);
-                    LoadVideoData(folderPath, fileName);
+                await semaphore.WaitAsync();
 
-                    Dispatcher.Invoke(() =>
+                tasks.Add(Task.Run(() =>
+                {
+                    try
                     {
-                        progProcess.Value = ++completed;
-                    });
-                });
-            });
-            progProcess.Value = 100;
+                        var folderPath = Path.GetDirectoryName(item.TargetPath);
+                        var fileName = Path.GetFileName(item.TargetPath);
+                        LoadVideoData(folderPath, fileName, item);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }));
+            }
+
+            await Task.WhenAll(tasks);
+
             MessageBox.Show("모든 파일 변환이 완료되었습니다.");
-            progProcess.Value = progProcess.Maximum;
+        }
+
+        private void chkAllSelect_Checked(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in SourceList)
+                SetIsCheckedRecursive(item, true);
+        }
+
+        private void chkAllSelect_Unchecked(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in SourceList)
+                SetIsCheckedRecursive(item, false);
+        }
+
+        // 트리 구조 전체에 대해 체크/해제 적용
+        private void SetIsCheckedRecursive(TargetInfo item, bool isChecked)
+        {
+            item.IsChecked = isChecked;
+            foreach (var child in item.Items.OfType<TargetInfo>())
+                SetIsCheckedRecursive(child, isChecked);
         }
 
         void MakeTreeView_Source(TargetInfo _target)
         {
-            foreach(var folder in Directory.GetDirectories(_target.TargetPath))
+            foreach (var folder in Directory.GetDirectories(_target.TargetPath))
             {
-                _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = folder});
+                _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = folder });
                 this.MakeTreeView_Source((TargetInfo)_target.Items.Last());
             }
 
-            foreach(var file in Directory.GetFiles(_target.TargetPath).Where(o=>o.EndsWith(".ts")))
+            foreach (var file in Directory.GetFiles(_target.TargetPath).Where(o => o.EndsWith(".ts")))
             {
                 _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = file });
             }
         }
-        
-        void MakeTreeView_Output(TargetInfo _target)
-        {
 
-        }
 
-        XVideoIO videoIO = new XVideoIO();
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
-        void LoadVideoData(string _folderPath, string _filePath)
+      
+        void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
-            if (_filePath.Substring(0, 1) == @"\")
-                _filePath = _filePath.Substring(1, _filePath.Length - 1);
+            
+            //Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
+
+            XVideoIO videoIO = new XVideoIO();
+            XVideo video = null;
+
+            if (!string.IsNullOrEmpty(_filePath) && _filePath.StartsWith(@"\"))
+                _filePath = _filePath.Substring(1);
 
             string filePath = Path.Combine(_folderPath, _filePath);
-            if (File.Exists(filePath))
-            {
-                this.listMetad = new List<MT_MV>();
-                XVideo video = this.videoIO.OpenFile(filePath, @"XFFMPDriver", true, false, null, this.PreviewFrameMetad, null, out string err);
-                this.dtLastReadMetad = DateTime.Now;
-                while ((DateTime.Now - this.dtLastReadMetad).TotalSeconds < 1)
-                {
-                    Thread.Sleep(10);
-                }
+            if (!File.Exists(filePath))
+                return;
 
-                string csvPath = Path.Combine(_folderPath, "output", _filePath.Substring(0, _filePath.Length - 2) + "csv");
-                if (!Directory.Exists(Path.GetDirectoryName(csvPath)))
-                    Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
-                this.GenerateMetadDataToCSV(csvPath);
+            var metadList = new List<MT_MV>();
+            DateTime lastReadMetad = DateTime.Now;
+
+            Dispatcher.Invoke(() =>
+            {
+                target.Progress = 0;
+                target.TotalFrames = 0;
+            });
+
+            int processedFrames = 0;
+
+            video = videoIO.OpenFile(
+                filePath,
+                @"XFFMPDriver",
+                true,
+                false,
+                null,
+                (videoIO, streamID, data) =>
+                {
+                    MT_MV metad = new MT_MV();
+                    metad.SetData(data.PTS, data.GetData());
+                    metadList.Add(metad);
+                    lastReadMetad = DateTime.Now;
+                    processedFrames++;
+                
+                        Dispatcher.Invoke(() =>
+                        {
+                            target.TotalFrames = processedFrames;
+                            target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
+                            Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                        });
+                    
+                },
+                null,
+                out string err
+            );
+
+            if (!string.IsNullOrEmpty(err))
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"파일: {filePath}\n에러: {err}");
+                });
+                return;
             }
+
+            while ((DateTime.Now - lastReadMetad).TotalSeconds < 1)
+            {
+                Thread.Sleep(10);
+            }
+
+            // CSV 저장
+            string csvPath = Path.Combine(_folderPath, "output", Path.GetFileNameWithoutExtension(_filePath) + ".csv");
+            Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
+            GenerateMetadDataToCSV(csvPath, metadList);
         }
 
-        void GenerateMetadDataToCSV(string _csvPath)
+
+        void GenerateMetadDataToCSV(string _csvPath, List<MT_MV> metadList)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -144,11 +217,11 @@ namespace MT.ExtractorToCSV
                           .Where(p => p.Name.EndsWith("_DP") && p.PropertyType == typeof(string))
                           .ToArray();
 
-            var headers = properties.Select(o => o.Name.Replace("_DP","")).ToArray();
+            var headers = properties.Select(o => o.Name.Replace("_DP", "")).ToArray();
             sb.AppendLine(string.Join(",", headers));
 
             // 데이터 작성
-            foreach (var item in this.listMetad)
+            foreach (var item in metadList)
             {
                 var values = properties.Select(p =>
                 {
@@ -266,6 +339,20 @@ namespace MT.ExtractorToCSV
             else
                 this.FileSize = 0;
         }
+
+        double progress = 0;
+        public double Progress
+        {
+            get => progress;
+            set
+            {
+                progress = value;
+                if (!this.isManualNotifyPropertyChanged)
+                    this.OnPropertyChanged();
+            }
+        }
+        public int TotalFrames { get; set; }
+
     }
 
     public class TreeData : INotifyPropertyChanged
@@ -349,7 +436,7 @@ namespace MT.ExtractorToCSV
         {
             bool res = true;
 
-            if (_item == null) 
+            if (_item == null)
                 res = false;
 
             res = this.items.Remove(_item);
