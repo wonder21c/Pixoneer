@@ -114,7 +114,7 @@ namespace MT.ExtractorToCSV
         private void SetIsCheckedRecursive(TargetInfo item, bool isChecked)
         {
             item.IsChecked = isChecked;
-            foreach (var child in item.Items.OfType<TargetInfo>())
+            foreach (TargetInfo child in item.Items.OfType<TargetInfo>())
                 SetIsCheckedRecursive(child, isChecked);
         }
 
@@ -161,6 +161,31 @@ namespace MT.ExtractorToCSV
             });
 
             int processedFrames = 0;
+            int totalFrames = 0;
+            video = videoIO.OpenFile(
+                filePath,
+                @"XFFMPDriver",
+                true,
+                false,
+                null,
+                (videoIO, streamID, data) =>
+                {
+                    MT_MV metad = new MT_MV();
+                    metad.SetData(data.PTS, data.GetData());
+                    metadList.Add(metad);
+                    lastReadMetad = DateTime.Now;
+                    totalFrames++;
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        target.TotalFrames = totalFrames;
+                       // Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                    });
+
+                },
+                null,
+                out string err1
+            );
 
             video = videoIO.OpenFile(
                 filePath,
@@ -178,21 +203,21 @@ namespace MT.ExtractorToCSV
                 
                         Dispatcher.Invoke(() =>
                         {
-                            target.TotalFrames = processedFrames;
+                            //target.TotalFrames = processedFrames;
                             target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
-                            Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                           // Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
                         });
                     
                 },
                 null,
-                out string err
+                out string err2
             );
 
-            if (!string.IsNullOrEmpty(err))
+            if (!string.IsNullOrEmpty(err2))
             {
                 Dispatcher.Invoke(() =>
                 {
-                    MessageBox.Show($"파일: {filePath}\n에러: {err}");
+                    MessageBox.Show($"파일: {filePath}\n에러: {err2}");
                 });
                 return;
             }
