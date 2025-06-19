@@ -135,12 +135,11 @@ namespace MT.ExtractorToCSV
 
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
-        [HandleProcessCorruptedStateExceptions]
-        [SecurityCritical]
+      
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
             
-            Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
+            //Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
 
             XVideoIO videoIO = new XVideoIO();
             XVideo video = null;
@@ -176,16 +175,14 @@ namespace MT.ExtractorToCSV
                     metadList.Add(metad);
                     lastReadMetad = DateTime.Now;
                     processedFrames++;
-
-                    if (processedFrames % 100 == 0)
-                    {
+                
                         Dispatcher.Invoke(() =>
                         {
                             target.TotalFrames = processedFrames;
                             target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
-                            //Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                            Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
                         });
-                    }
+                    
                 },
                 null,
                 out string err
