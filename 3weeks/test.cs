@@ -33,7 +33,7 @@ namespace MT.ExtractorToCSV
         //public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog();
+            OpenFileDialog dialog = new OpenFileDialog();
             dialog.CheckFileExists = true;
             dialog.CheckPathExists = true;
             dialog.Multiselect = true;
@@ -65,7 +65,7 @@ namespace MT.ExtractorToCSV
                 return;
             }
 
-            var tasks = checkedItems.Select(item =>
+            Task[] tasks = checkedItems.Select(item =>
                 Task.Run(() =>
                 {
                     var folderPath = Path.GetDirectoryName(item.TargetPath);
@@ -114,14 +114,15 @@ namespace MT.ExtractorToCSV
         }
     
 
-        XVideoIO videoIO = new XVideoIO();
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
             Debug.WriteLine($"Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
 
-            var videoIO = new XVideoIO(); // 각 스레드마다 인스턴스 생성
+            XVideoIO videoIO = new XVideoIO(); // 각 스레드마다 인스턴스 생성
+            XVideo video = null;
+            XVideoChannel channel = null;
 
             if (!string.IsNullOrEmpty(_filePath) && _filePath.Length > 1 && _filePath.Substring(0, 1) == @"\")
                 _filePath = _filePath.Substring(1, _filePath.Length - 1);
@@ -134,11 +135,10 @@ namespace MT.ExtractorToCSV
 
                 Dispatcher.Invoke(() => target.Progress = 0);
 
-                int totalFrames = 0; // 전체 프레임 수를 알 수 있으면 할당, 모르면 대략적으로라도 추정
                 int processedFrames = 0;
-                const int progressStep = 100; // 100프레임마다 1%씩 올림
-
-                XVideo video = videoIO.OpenFile(
+                int totalFrames = 0;
+                //const int progressStep = 10;
+                video = videoIO.OpenFile(
                     filePath,
                     @"XFFMPDriver",
                     true,
@@ -150,23 +150,54 @@ namespace MT.ExtractorToCSV
                         metad.SetData(data.PTS, data.GetData());
                         metadList.Add(metad);
                         lastReadMetad = DateTime.Now;
-
+                        totalFrames++;
+                    },
+                    null,
+                    out string err1
+                );
+                channel = video.GetChannel(0);
+                //channel.Activate();
+                //double totalFrames = channel.GetNumFramesVideo();
+                Dispatcher.Invoke(() =>
+                {
+                    target.TotalFrames = (int)totalFrames;
+                });
+                Debug.WriteLine($"총 프레임 수: {totalFrames} ({target.TargetPath})");
+                //감지될때마다 ++
+                video = videoIO.OpenFile(
+                    filePath,
+                    @"XFFMPDriver",
+                    true,
+                    false,
+                    null,
+                    (videoIO, streamID, data) =>
+                    {
+                        MT_MV metad = new MT_MV();
+                        metad.SetData(data.PTS, data.GetData());
+                        metadList.Add(metad);
+                        lastReadMetad = DateTime.Now;
                         processedFrames++;
-                        if (processedFrames % progressStep == 0)
+                        Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString()); 
+                        if (target.TotalFrames > 0)
                         {
-                            double progress = Math.Min(99, processedFrames / 10.0); // 1000프레임이면 100%
-                            Dispatcher.Invoke(() => target.Progress = progress);
+                            double progressRatio = (double)processedFrames / target.TotalFrames;
+                            Dispatcher.Invoke(() =>
+                            {
+                                target.Progress = Math.Min(1.0, progressRatio);
+                            });
                         }
                     },
                     null,
-                    out string err
+                    out string err2
                 );
 
-                if (!string.IsNullOrEmpty(err))
+
+
+                if (!string.IsNullOrEmpty(err2))
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        MessageBox.Show($"파일: {filePath}\n에러: {err}");
+                        MessageBox.Show($"파일: {filePath}\n에러: {err2}");
                     });
                 }
 
@@ -176,17 +207,15 @@ namespace MT.ExtractorToCSV
                     Thread.Sleep(10);
                 }
 
-                // 100%로 마무리
-                Dispatcher.Invoke(() => target.Progress = 100);
+                //Debug.WriteLine($"총 프레임 수: {processedFrames} ({target.TargetPath})");
 
                 string csvPath = Path.Combine(_folderPath, "output", _filePath.Substring(0, _filePath.Length - 2) + "csv");
                 if (!Directory.Exists(Path.GetDirectoryName(csvPath)))
                     Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
                 GenerateMetadDataToCSV(csvPath, metadList);
             }
-
-            Debug.WriteLine($"End: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
         }
+
 
         void GenerateMetadDataToCSV(string _csvPath, List<MT_MV> metadList)
         {
@@ -330,6 +359,8 @@ namespace MT.ExtractorToCSV
                     this.OnPropertyChanged();
             }
         }
+        public int TotalFrames { get; set; }
+
     }
 
     public class TreeData : INotifyPropertyChanged
