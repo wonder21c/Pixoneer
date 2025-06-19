@@ -16,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace MT.ExtractorToCSV
 {
@@ -57,21 +58,24 @@ namespace MT.ExtractorToCSV
 
         private async void btnConvert_Click(object sender, RoutedEventArgs e)
         {
-            var checkedItems = SourceList.Where(x => x.IsChecked).ToList();
+            var checkedItems = SourceList
+                .Where(x => x.IsChecked)
+                .OrderBy(x => new FileInfo(x.TargetPath).Length) 
+                .ToList();
 
             if (checkedItems.Count == 0)
             {
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
-            int maxConcurrentTasks = 5;
-            var semaphore = new SemaphoreSlim(maxConcurrentTasks);
+           int maxConcurrentTasks = 5;
+           var semaphore = new SemaphoreSlim(maxConcurrentTasks);
 
             List<Task> tasks = new List<Task>();
-
+            
             foreach (var item in checkedItems)
             {
-                await semaphore.WaitAsync(); 
+                await semaphore.WaitAsync();
 
                 tasks.Add(Task.Run(() =>
                 {
@@ -83,7 +87,7 @@ namespace MT.ExtractorToCSV
                     }
                     finally
                     {
-                        semaphore.Release(); 
+                        semaphore.Release();
                     }
                 }));
             }
@@ -115,119 +119,93 @@ namespace MT.ExtractorToCSV
 
         void MakeTreeView_Source(TargetInfo _target)
         {
-            foreach(var folder in Directory.GetDirectories(_target.TargetPath))
+            foreach (var folder in Directory.GetDirectories(_target.TargetPath))
             {
-                _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = folder});
+                _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = folder });
                 this.MakeTreeView_Source((TargetInfo)_target.Items.Last());
             }
 
-            foreach(var file in Directory.GetFiles(_target.TargetPath).Where(o=>o.EndsWith(".ts")))
+            foreach (var file in Directory.GetFiles(_target.TargetPath).Where(o => o.EndsWith(".ts")))
             {
                 _target.Items.Add(new TargetInfo() { Level = _target.Level + 1, TargetPath = file });
             }
         }
-    
+
 
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
-            Debug.WriteLine($"Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
+            
+            Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
 
-            XVideoIO videoIO = new XVideoIO(); // 각 스레드마다 인스턴스 생성
+            XVideoIO videoIO = new XVideoIO();
             XVideo video = null;
-            XVideoChannel channel = null;
 
-            if (!string.IsNullOrEmpty(_filePath) && _filePath.Length > 1 && _filePath.Substring(0, 1) == @"\")
-                _filePath = _filePath.Substring(1, _filePath.Length - 1);
+            if (!string.IsNullOrEmpty(_filePath) && _filePath.StartsWith(@"\"))
+                _filePath = _filePath.Substring(1);
 
             string filePath = Path.Combine(_folderPath, _filePath);
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
+                return;
+
+            var metadList = new List<MT_MV>();
+            DateTime lastReadMetad = DateTime.Now;
+
+            Dispatcher.Invoke(() =>
             {
-                var metadList = new List<MT_MV>();
-                DateTime lastReadMetad = DateTime.Now;
+                target.Progress = 0;
+                target.TotalFrames = 0;
+            });
 
-                Dispatcher.Invoke(() => target.Progress = 0);
+            int processedFrames = 0;
 
-                int processedFrames = 0;
-                int totalFrames = 0;
-                //const int progressStep = 10;
-                video = videoIO.OpenFile(
-                    filePath,
-                    @"XFFMPDriver",
-                    true,
-                    false,
-                    null,
-                    (videoIO, streamID, data) =>
+            video = videoIO.OpenFile(
+                filePath,
+                @"XFFMPDriver",
+                true,
+                false,
+                null,
+                (videoIO, streamID, data) =>
+                {
+                    MT_MV metad = new MT_MV();
+                    metad.SetData(data.PTS, data.GetData());
+                    metadList.Add(metad);
+                    lastReadMetad = DateTime.Now;
+                    processedFrames++;
+
+                    if (processedFrames % 100 == 0)
                     {
-                        MT_MV metad = new MT_MV();
-                        metad.SetData(data.PTS, data.GetData());
-                        metadList.Add(metad);
-                        lastReadMetad = DateTime.Now;
-                        totalFrames++;
-                    },
-                    null,
-                    out string err1
-                );
-                //channel = video.GetChannel(0);
-                //channel.Activate();
-                //double totalFrames = channel.GetNumFramesVideo();
+                        Dispatcher.Invoke(() =>
+                        {
+                            target.TotalFrames = processedFrames;
+                            target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
+                            //Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                        });
+                    }
+                },
+                null,
+                out string err
+            );
+
+            if (!string.IsNullOrEmpty(err))
+            {
                 Dispatcher.Invoke(() =>
                 {
-                    target.TotalFrames = (int)totalFrames;
+                    MessageBox.Show($"파일: {filePath}\n에러: {err}");
                 });
-                Debug.WriteLine($"총 프레임 수: {totalFrames} ({target.TargetPath})");
-                //감지될때마다 ++
-                video = videoIO.OpenFile(
-                    filePath,
-                    @"XFFMPDriver",
-                    true,
-                    false,
-                    null,
-                    (videoIO, streamID, data) =>
-                    {
-                        MT_MV metad = new MT_MV();
-                        metad.SetData(data.PTS, data.GetData());
-                        metadList.Add(metad);
-                        lastReadMetad = DateTime.Now;
-                        processedFrames++;
-                        Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString()); 
-                        if (target.TotalFrames > 0)
-                        {
-                            double progressRatio = (double)processedFrames / target.TotalFrames;
-                            Dispatcher.Invoke(() =>
-                            {
-                                target.Progress = Math.Min(1.0, progressRatio);
-                            });
-                        }
-                    },
-                    null,
-                    out string err2
-                );
-
-
-
-                if (!string.IsNullOrEmpty(err2))
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show($"파일: {filePath}\n에러: {err2}");
-                    });
-                }
-
-                lastReadMetad = DateTime.Now;
-                while ((DateTime.Now - lastReadMetad).TotalSeconds < 1)
-                {
-                    Thread.Sleep(10);
-                }
-
-                //Debug.WriteLine($"총 프레임 수: {processedFrames} ({target.TargetPath})");
-
-                string csvPath = Path.Combine(_folderPath, "output", _filePath.Substring(0, _filePath.Length - 2) + "csv");
-                if (!Directory.Exists(Path.GetDirectoryName(csvPath)))
-                    Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
-                GenerateMetadDataToCSV(csvPath, metadList);
+                return;
             }
+
+            while ((DateTime.Now - lastReadMetad).TotalSeconds < 1)
+            {
+                Thread.Sleep(10);
+            }
+
+            // CSV 저장
+            string csvPath = Path.Combine(_folderPath, "output", Path.GetFileNameWithoutExtension(_filePath) + ".csv");
+            Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
+            GenerateMetadDataToCSV(csvPath, metadList);
         }
 
 
@@ -458,7 +436,7 @@ namespace MT.ExtractorToCSV
         {
             bool res = true;
 
-            if (_item == null) 
+            if (_item == null)
                 res = false;
 
             res = this.items.Remove(_item);
