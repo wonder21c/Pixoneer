@@ -73,27 +73,17 @@ namespace MT.ExtractorToCSV
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
-           int maxConcurrentTasks = 5;
-           var semaphore = new SemaphoreSlim(maxConcurrentTasks);
+           
 
             List<Task> tasks = new List<Task>();
             
             foreach (var item in checkedItems)
-            {
-                await semaphore.WaitAsync();
-
+            { 
                 tasks.Add(Task.Run(() =>
                 {
-                    try
-                    {
-                        var folderPath = Path.GetDirectoryName(item.TargetPath);
-                        var fileName = Path.GetFileName(item.TargetPath);
-                        LoadVideoData(folderPath, fileName, item);
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
+                    var folderPath = Path.GetDirectoryName(item.TargetPath);
+                    var fileName = Path.GetFileName(item.TargetPath);
+                    LoadVideoData(folderPath, fileName, item);
                 }));
             }
 
@@ -105,13 +95,18 @@ namespace MT.ExtractorToCSV
         private void chkAllSelect_Checked(object sender, RoutedEventArgs e)
         {
             foreach (var item in SourceList)
+            {
                 SetIsCheckedRecursive(item, true);
+            }
         }
 
         private void chkAllSelect_Unchecked(object sender, RoutedEventArgs e)
         {
             foreach (var item in SourceList)
+            {
                 SetIsCheckedRecursive(item, false);
+            }
+              
         }
 
         // 트리 구조 전체에 대해 체크/해제 적용
@@ -119,7 +114,9 @@ namespace MT.ExtractorToCSV
         {
             item.IsChecked = isChecked;
             foreach (TargetInfo child in item.Items.OfType<TargetInfo>())
+            {
                 SetIsCheckedRecursive(child, isChecked);
+            }
         }
 
         void MakeTreeView_Source(TargetInfo _target)
@@ -157,7 +154,6 @@ namespace MT.ExtractorToCSV
 
             var metadList = new List<MT_MV>();
             DateTime lastReadMetad = DateTime.Now;
-            //XVideoChannel channel = null;
 
             Dispatcher.Invoke(() =>
             {
@@ -202,7 +198,6 @@ namespace MT.ExtractorToCSV
             );
 
              m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
-            //channel = video.GetChannel(0);
 
             if (!string.IsNullOrEmpty(err))
             {
