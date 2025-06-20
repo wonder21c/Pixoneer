@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using Pixoneer.NXDL;
 using Pixoneer.NXDL.NXVideo;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -19,6 +20,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 
+
 namespace MT.ExtractorToCSV
 {
     /// <summary>
@@ -29,6 +31,8 @@ namespace MT.ExtractorToCSV
         public MainWindow()
         {
             InitializeComponent();
+            XThread m_Thread = new XThread();
+            m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
         }
 
         public ObservableCollection<TargetInfo> SourceList { get; set; } = new ObservableCollection<TargetInfo>();
@@ -114,7 +118,7 @@ namespace MT.ExtractorToCSV
         private void SetIsCheckedRecursive(TargetInfo item, bool isChecked)
         {
             item.IsChecked = isChecked;
-            foreach (var child in item.Items.OfType<TargetInfo>())
+            foreach (TargetInfo child in item.Items.OfType<TargetInfo>())
                 SetIsCheckedRecursive(child, isChecked);
         }
 
@@ -135,14 +139,14 @@ namespace MT.ExtractorToCSV
 
         bool isFinishedProc = false;
         List<MT_MV> listMetad = null;
-      
+
         void LoadVideoData(string _folderPath, string _filePath, TargetInfo target)
         {
-            
+
             //Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
 
             XVideoIO videoIO = new XVideoIO();
-            XVideo video = null;
+
 
             if (!string.IsNullOrEmpty(_filePath) && _filePath.StartsWith(@"\"))
                 _filePath = _filePath.Substring(1);
@@ -153,6 +157,7 @@ namespace MT.ExtractorToCSV
 
             var metadList = new List<MT_MV>();
             DateTime lastReadMetad = DateTime.Now;
+            //XVideoChannel channel = null;
 
             Dispatcher.Invoke(() =>
             {
@@ -161,8 +166,11 @@ namespace MT.ExtractorToCSV
             });
 
             int processedFrames = 0;
+            int totalFrames = 0;
+            //m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
 
-            video = videoIO.OpenFile(
+            XThread m_Thread = new XThread();
+            XVideo video = videoIO.OpenFile(
                 filePath,
                 @"XFFMPDriver",
                 true,
@@ -174,19 +182,27 @@ namespace MT.ExtractorToCSV
                     metad.SetData(data.PTS, data.GetData());
                     metadList.Add(metad);
                     lastReadMetad = DateTime.Now;
-                    processedFrames++;
-                
-                        Dispatcher.Invoke(() =>
-                        {
-                            target.TotalFrames = processedFrames;
-                            target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
-                            Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
-                        });
+                    //m_Thread.GetPercentRange(ref minPercent, ref maxPercent);
+                    //Debug.WriteLine("@@@@@" + minPercent.ToString() + " / " + maxPercent.ToString());
+                    //int threadRange = maxPercent - minPercent;
                     
+                    
+                    processedFrames++;
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        target.TotalFrames = processedFrames;
+                        target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
+                        //Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
+                    });
+
                 },
-                null,
+               m_Thread,
                 out string err
             );
+
+             m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
+            //channel = video.GetChannel(0);
 
             if (!string.IsNullOrEmpty(err))
             {
@@ -206,6 +222,11 @@ namespace MT.ExtractorToCSV
             string csvPath = Path.Combine(_folderPath, "output", Path.GetFileNameWithoutExtension(_filePath) + ".csv");
             Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
             GenerateMetadDataToCSV(csvPath, metadList);
+        }
+
+        public void OnPercentUpdateProgressBar(XThread thd, int percent)
+        {
+            Trace.WriteLine(percent);
         }
 
 
