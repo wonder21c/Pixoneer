@@ -1,5 +1,4 @@
 using Microsoft.Win32;
-using Pixoneer.NXDL;
 using Pixoneer.NXDL.NXVideo;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -20,7 +19,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 
-
 namespace MT.ExtractorToCSV
 {
     /// <summary>
@@ -31,12 +29,9 @@ namespace MT.ExtractorToCSV
         public MainWindow()
         {
             InitializeComponent();
-            XThread m_Thread = new XThread();
-            m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
         }
 
         public ObservableCollection<TargetInfo> SourceList { get; set; } = new ObservableCollection<TargetInfo>();
-        //public ObservableCollection<TargetInfo> OutputList { get; set; } = new ObservableCollection<TargetInfo>();
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog dialog = new OpenFileDialog();
@@ -65,7 +60,7 @@ namespace MT.ExtractorToCSV
         {
             var checkedItems = SourceList
                 .Where(x => x.IsChecked)
-                .OrderBy(x => new FileInfo(x.TargetPath).Length) 
+                .OrderBy(x => new FileInfo(x.TargetPath).Length)
                 .ToList();
 
             if (checkedItems.Count == 0)
@@ -73,50 +68,36 @@ namespace MT.ExtractorToCSV
                 MessageBox.Show("선택된 파일이 없습니다.");
                 return;
             }
-           
-
             List<Task> tasks = new List<Task>();
-            
             foreach (var item in checkedItems)
-            { 
+            {
+                item.Progress = 0;
                 tasks.Add(Task.Run(() =>
                 {
-                    var folderPath = Path.GetDirectoryName(item.TargetPath);
-                    var fileName = Path.GetFileName(item.TargetPath);
-                    LoadVideoData(folderPath, fileName, item);
+                        var folderPath = Path.GetDirectoryName(item.TargetPath);
+                        var fileName = Path.GetFileName(item.TargetPath);
+                        LoadVideoData(folderPath, fileName, item);
                 }));
             }
-
             await Task.WhenAll(tasks);
-
             MessageBox.Show("모든 파일 변환이 완료되었습니다.");
         }
 
         private void chkAllSelect_Checked(object sender, RoutedEventArgs e)
         {
             foreach (var item in SourceList)
-            {
                 SetIsCheckedRecursive(item, true);
-            }
         }
-
         private void chkAllSelect_Unchecked(object sender, RoutedEventArgs e)
         {
             foreach (var item in SourceList)
-            {
                 SetIsCheckedRecursive(item, false);
-            }
-              
         }
-
-        // 트리 구조 전체에 대해 체크/해제 적용
         private void SetIsCheckedRecursive(TargetInfo item, bool isChecked)
         {
             item.IsChecked = isChecked;
             foreach (TargetInfo child in item.Items.OfType<TargetInfo>())
-            {
                 SetIsCheckedRecursive(child, isChecked);
-            }
         }
 
         void MakeTreeView_Source(TargetInfo _target)
@@ -143,7 +124,7 @@ namespace MT.ExtractorToCSV
             //Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Start: {target.TargetPath} {DateTime.Now:HH:mm:ss.fff}");
 
             XVideoIO videoIO = new XVideoIO();
-
+            XVideo video = null;
 
             if (!string.IsNullOrEmpty(_filePath) && _filePath.StartsWith(@"\"))
                 _filePath = _filePath.Substring(1);
@@ -155,18 +136,29 @@ namespace MT.ExtractorToCSV
             var metadList = new List<MT_MV>();
             DateTime lastReadMetad = DateTime.Now;
 
-            Dispatcher.Invoke(() =>
-            {
-                target.Progress = 0;
-                target.TotalFrames = 0;
-            });
-
+            string err;
             int processedFrames = 0;
-            int totalFrames = 0;
-            //m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
-
-            XThread m_Thread = new XThread();
-            XVideo video = videoIO.OpenFile(
+            int totalMetad = 0;
+            if (video == null)
+            {
+                video = videoIO.OpenFile(
+                    filePath,
+                    @"XFFMPDriver",
+                    true,
+                    false,
+                    null,
+                    (videoIO, streamID, data) =>
+                    {
+                        if (data.GetData().Any())
+                            totalMetad++;
+                    },
+                    null,
+                    out err
+                );
+            }
+            this.Dispatcher.Invoke(() => target.TotalMetad = totalMetad);
+            video.Close();
+            video = videoIO.OpenFile(
                 filePath,
                 @"XFFMPDriver",
                 true,
@@ -174,30 +166,18 @@ namespace MT.ExtractorToCSV
                 null,
                 (videoIO, streamID, data) =>
                 {
-                    MT_MV metad = new MT_MV();
-                    metad.SetData(data.PTS, data.GetData());
-                    metadList.Add(metad);
-                    lastReadMetad = DateTime.Now;
-                    //m_Thread.GetPercentRange(ref minPercent, ref maxPercent);
-                    //Debug.WriteLine("@@@@@" + minPercent.ToString() + " / " + maxPercent.ToString());
-                    //int threadRange = maxPercent - minPercent;
-                    
-                    
-                    processedFrames++;
-
-                    Dispatcher.Invoke(() =>
+                    if (data.GetData().Any())
                     {
-                        target.TotalFrames = processedFrames;
-                        target.Progress = Math.Min(1.0, (double)processedFrames / target.TotalFrames);
-                        //Debug.WriteLine("@@@@@" + processedFrames.ToString() + " / " + target.TotalFrames.ToString());
-                    });
+                        MT_MV metad = new MT_MV();
+                        metad.SetData(data.PTS, data.GetData());
+                        metadList.Add(metad);
 
+                        Dispatcher.Invoke(() =>{target.Progress++;});
+                    }
                 },
-               m_Thread,
-                out string err
+                null,
+                out err
             );
-
-             m_Thread.OnPercent += new XThreadMessagePercent(OnPercentUpdateProgressBar);
 
             if (!string.IsNullOrEmpty(err))
             {
@@ -208,20 +188,12 @@ namespace MT.ExtractorToCSV
                 return;
             }
 
-            while ((DateTime.Now - lastReadMetad).TotalSeconds < 1)
-            {
-                Thread.Sleep(10);
-            }
-
             // CSV 저장
             string csvPath = Path.Combine(_folderPath, "output", Path.GetFileNameWithoutExtension(_filePath) + ".csv");
             Directory.CreateDirectory(Path.GetDirectoryName(csvPath));
             GenerateMetadDataToCSV(csvPath, metadList);
-        }
 
-        public void OnPercentUpdateProgressBar(XThread thd, int percent)
-        {
-            Trace.WriteLine(percent);
+            video.Close();
         }
 
 
@@ -367,8 +339,18 @@ namespace MT.ExtractorToCSV
                     this.OnPropertyChanged();
             }
         }
-        public int TotalFrames { get; set; }
 
+        public int totalMetad = 1;
+        public int TotalMetad
+        {
+            get => this.totalMetad;
+            set
+            {
+                this.totalMetad = value;
+                if (!this.isManualNotifyPropertyChanged)
+                    this.OnPropertyChanged();
+            }
+        }
     }
 
     public class TreeData : INotifyPropertyChanged
@@ -376,7 +358,7 @@ namespace MT.ExtractorToCSV
         public event PropertyChangedEventHandler? PropertyChanged;
         protected bool isManualNotifyPropertyChanged = false;
         public void SetManualNotifyChangedMode(bool _isManualNotifyPropertyChanged) => this.isManualNotifyPropertyChanged = _isManualNotifyPropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        protected void OnPropertyChanged([CallerMemberName] string name = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
